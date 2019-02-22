@@ -1,7 +1,7 @@
 import random
 from keras import Model
 from keras.layers import *
-from keras.callbacks import ModelCheckpoint,ReduceLROnPlateau
+from keras.callbacks import ModelCheckpoint,ReduceLROnPlateau,EarlyStopping
 from sklearn.model_selection import train_test_split
 import cv2
 import pandas as pd
@@ -10,11 +10,12 @@ from keras.applications.inception_resnet_v2 import InceptionResNetV2
 import os
 from glob import glob
 from keras.utils import to_categorical
+from keras.models import load_model
 from keras.preprocessing.image import ImageDataGenerator
 
 csvpath = 'D:\OneDrive\TFG\TFG_Python\HAM10000_metadata.csv'
 impath = 'D:\OneDrive\TFG\TFG_Python\Images'
-h5path = 'D:\OneDrive\TFG\TFG_Python\Neural\model.h5'
+h5path = 'D:\OneDrive\TFG\TFG_Python\core\model.h5'
 #Constante que da las dimensiones para las distintas imagenes
 HEIGHT = WIDTH = 185
 LABELNUM = 7
@@ -32,7 +33,7 @@ lesion_type_dict = {
 }
 
 
-def model_training():
+def model_training_without_augmentation():
     #Local funcions definitions
     def valid_gen():
         imglist = np.zeros((len(valid_img_path), HEIGHT, WIDTH, 3))
@@ -66,7 +67,6 @@ def model_training():
 
     encoder = LabelEncoder()  # Lo usaremos para las labels
     encoder.fit(train_df['dx'])
-    print(encoder.classes_)
     labeldf = encoder.transform(train_df['dx'])
     labeldf = to_categorical(labeldf)
     train_img_path, valid_img_path, train_label, valid_label = train_test_split(train_df['path'], labeldf, test_size=0.2)
@@ -79,14 +79,66 @@ def model_training():
     model.compile(metrics=['accuracy'], loss='categorical_crossentropy', optimizer='Adam')
     callbacks = [
         ModelCheckpoint('model.h5',monitor='val_loss', save_best_only=True),
-        ReduceLROnPlateau(monitor='val_loss', patience=5)
+        ReduceLROnPlateau(monitor='val_loss', patience=5),
+        EarlyStopping(monitor='val_loss', patience=3)
     ]
 
     model.fit_generator(train_gen(), epochs=50, steps_per_epoch=100, verbose=1, validation_data=validdata, callbacks= callbacks)
 
 
 
+def model_training_with_augmentation():
+    def valid_gen():
+        imglist = np.zeros((len(valid_img_path), HEIGHT, WIDTH, 3))
+        labellist = np.zeros((len(valid_img_path), len(labelnum)))
+        for i, imgpath in enumerate(valid_img_path):
+            img = read_img(imgpath)
+            label = valid_label[i]
+            imglist[i] = img
+            labellist[i] = label
+        return (imglist, labellist)
 
+    def load_img_list(imglist, tensor):
+        i=0
+        for img in imglist:
+            tensor[i] = read_img(img)
+            i += 1
+            if i % 100 ==0:
+                print("Images read: "+str(i))
+
+    train_df = pd.read_csv(csvpath)
+    train_df['path'] = train_df['image_id'].map(imageid_path_dict.get)
+
+    labelnum = train_df.groupby('dx').size()
+
+    encoder = LabelEncoder()  # Lo usaremos para las labels
+    encoder.fit(train_df['dx'])
+    labeldf = encoder.transform(train_df['dx'])
+    labeldf = to_categorical(labeldf)
+    train_img_path, valid_img_path, train_label, valid_label = train_test_split(train_df['path'], labeldf,test_size=0.2)
+
+    train_img = np.zeros((len(train_img_path),HEIGHT,WIDTH,3))
+    load_img_list(train_img_path,train_img)
+
+    datagen = ImageDataGenerator(
+        featurewise_center=True,
+        featurewise_std_normalization=True,
+        rotation_range=20,
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        horizontal_flip=True)
+
+    datagen.fit(train_img)
+    model = load_model_from_h5()
+    validdata = valid_gen()
+    callbacks = [
+        ModelCheckpoint('model.h5', monitor='val_loss', save_best_only=True),
+        ReduceLROnPlateau(monitor='val_loss', patience=5),
+        EarlyStopping(monitor='val_loss', patience=5)
+    ]
+
+    model.fit_generator(datagen.flow(train_img, train_label, batch_size=32), steps_per_epoch=len(train_img)/32, epochs=50, validation_data=validdata, callbacks=callbacks)
+    return
 
 
 def read_img(imgpath):
@@ -106,7 +158,9 @@ def create_model():
     return model
 
 
+def load_model_from_h5():
+    print("Please wait, this proccess will take about a min, depending on your machine config")
+    model = load_model('model.h5')
+    return model
 
 
-#main
-model_training()
