@@ -1,0 +1,11 @@
+numpy
+tensorflow-gpu
+keras
+pydicom
+opencv-python
+Pillow
+scikit-learn
+h5py
+flask
+flask-wtf
+pandas
