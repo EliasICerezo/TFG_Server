@@ -9,3 +9,11 @@ h5py
 flask
 flask-wtf
 pandas
+imgaug
+six
+scipy
+matplotlib
+scikit-image
+opencv-python
+imageio
+Shapely
