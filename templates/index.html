@@ -1,0 +1,84 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='bulma-0.7.2/css/bulma.css') }}" />
+    <style>
+        body{
+            background-color: #2a9cda;
+        }
+    </style>
+    <title>Skin Cancer detector</title>
+</head>
+<body>
+    {% block navbar %}
+        {% include "navBar.html" %}
+    {% endblock navbar %}
+    <div class="container is-centered is-fullheight">
+        <div class="notification">
+          <div class="columns">
+              <div class="column">
+                 <div class="card">
+                    <div class="card-image">
+                        <figure class="image is-1by1">
+                          <a href="{{ url_for("analize_image") }}">
+                              <img src="../static/images/analisis.jpg" alt="Placeholder image">
+                          </a>
+                        </figure>
+                    </div>
+                    <div class="card-content">
+                        <div class="subtitle">
+                            Analisis
+                        </div>
+                    </div>
+                 </div>
+              </div>
+              <div class="column">
+                <div class="card">
+                    <div class="card-image">
+                        <figure class="image is-1by1">
+                          <a href="{{ url_for("disclaimer_render") }}">
+                              <img src="../static/images/warning.png" alt="Placeholder image">
+                          </a>
+                        </figure>
+                    </div>
+                    <div class="card-content">
+                        <div class="subtitle">
+                            Advertencias
+                        </div>
+                    </div>
+                 </div>
+              </div>
+              <div class="column">
+                <div class="card">
+                    <div class="card-image">
+                        <figure class="image is-1by1">
+                          <a href="{{ url_for("about_render") }}">
+                              <img src="../static/images/about.png" alt="Placeholder image">
+                          </a>
+                        </figure>
+                    </div>
+                    <div class="card-content">
+                        <div class="subtitle">
+                            Sobre esta web
+                        </div>
+                    </div>
+                 </div>
+              </div>
+          </div>
+
+
+
+
+        </div>
+    </div>
+
+
+
+
+
+
+
+
+
+</body>
+</html>

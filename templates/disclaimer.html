@@ -1,0 +1,30 @@
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='bulma-0.7.2/css/bulma.css') }}" />
+    <title>Disclaimer</title>
+    <style>
+        body{
+            background-color: #2a9cda;
+        }
+    </style>
+</head>
+<body>
+    {% block navbar %}
+        {% include "navBar.html" %}
+    {% endblock navbar %}
+    <br/>
+    <div class="container">
+        <div class="notification">
+            <b class="is-size-5">Disclaimer:</b>
+            <p class="is-size-6">This software runs a complex artificial intelligence that can be susceptible to failure. This software has been developed as part as an End Of Degree Work. The objective of this software is to be capable of distinguish healthy skin and 7 different skin injuries. In no case it has been implemented to diagnose skin lesions or to self-medicate based on the results.</p>
+        </div>
+    </div>
+    <br/>
+    <div class="container">
+        <div class="notification">
+            <b class="is-size-5">Advertencia:</b>
+            <p class="is-size-6">Este software utiliza una inteligencia artificial compleja, susceptible de fallos (añadir porcentaje de acierto). Este software ha sido diseñado como parte de un trabajo de fin de grado cuyo objetivo era la investigación e implementación de un sistema capaz de discernir entre piel sana, y 7 lesiones cutáneas diferentes. En ningun caso se ha implementado con un propósito de diagnóstico ni con la finalidad de que el usuario se automedique basandose en los resultados obtenidos.</p>
+        </div>
+    </div>
+</body>
+</html>
