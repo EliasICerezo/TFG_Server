@@ -17,14 +17,15 @@ from keras.preprocessing.image import ImageDataGenerator
 from numpy import argmax
 import time
 
-newcsvpath= 'D:\OneDrive\TFG\TFG_Python\HAMNewCsv.csv'
+reducedcsvpath= 'D:\OneDrive\TFG\TFG_Python\HAMReduced.csv'
+augmentedcsvpath = 'D:\OneDrive\TFG\TFG_Python\HAMAugmented.csv'
 csvpath = 'D:\OneDrive\TFG\TFG_Python\HAM10000_metadata.csv'
 impath = 'D:\OneDrive\TFG\TFG_Python\Images'
 h5path = 'D:\OneDrive\TFG\TFG_Python\core\model.h5'
-#Constante que da las dimensiones para las distintas imagenes
+# Constante que da las dimensiones para las distintas imagenes
 HEIGHT = WIDTH = 224
 LABELNUM = 7
-#Aqui se ponen los ratios por cada uno de los tipos de imagenes, para ver cuantas modificaciones hay que hacer por cada una de ellas.
+# Aqui se ponen los ratios por cada uno de los tipos de imagenes, para ver cuantas modificaciones hay que hacer por cada una de ellas.
 AKIEC = 19
 BCC = 11
 BKL = 5
@@ -37,7 +38,7 @@ imageid_path_dict = {os.path.splitext(os.path.basename(x))[0]: x
 
 lesion_type_dict = {
     'nv': 'Melanocytic nevi',
-    'mel': 'Dermatofibroma',
+    'mel': 'Melanoma',
     'bkl': 'Benign keratosis-like lesions ',
     'bcc': 'Basal cell carcinoma',
     'akiec': 'Actinic keratoses',
@@ -45,20 +46,25 @@ lesion_type_dict = {
     'df': 'Dermatofibroma'
 }
 
+
+
+
 def model_training():
     start = time.time()
-    #Local funcions definitions
+    # Local funcions definitions
+    existsMods = True
     def test_gen():
         imglist = np.zeros((len(test_img_path), HEIGHT,WIDTH,3))
         labellist = np.zeros((len(test_img_path), len(labelnum)))
         for i, imgpath in enumerate(test_img_path):
             img = read_img(imgpath)
             label = test_label[i]
-            mod = test_mods[i]
-            if mod.item != 0:
-                g_x = image_gen.flow(np.expand_dims(img, axis=0), batch_size=1)
-                x = next(g_x)
-                img = x
+            if existsMods:
+                mod = test_mods[i]
+                if mod.item != 0:
+                    g_x = image_gen.flow(np.expand_dims(img, axis=0), batch_size=1)
+                    x = next(g_x)
+                    img = x
             imglist[i] = img
             labellist[i] = label
         return (imglist, labellist)
@@ -69,11 +75,12 @@ def model_training():
         for i, imgpath in enumerate(valid_img_path):
             img = read_img(imgpath)
             label = valid_label[i]
-            mod = valid_mods[i]
-            if mod.item != 0:
-                g_x = image_gen.flow(np.expand_dims(img, axis=0), batch_size=1)
-                x = next(g_x)
-                img = x
+            if existsMods:
+                mod = valid_mods[i]
+                if mod.item != 0:
+                    g_x = image_gen.flow(np.expand_dims(img, axis=0), batch_size=1)
+                    x = next(g_x)
+                    img = x
             imglist[i] = img
             labellist[i] = label
         return (imglist, labellist)
@@ -103,11 +110,12 @@ def model_training():
                 imgpath = train_img_path[train_img_path.index[rndid]]
                 img = read_img(imgpath)
                 label = train_label[rndid]
-                mod = train_mods[rndid]
-                if mod.item != 0:
-                    g_x = image_gen.flow(np.expand_dims(img,axis=0), batch_size=1)
-                    x= next(g_x)
-                    img = x
+                if existsMods:
+                    mod = train_mods[rndid]
+                    if mod.item != 0:
+                        g_x = image_gen.flow(np.expand_dims(img,axis=0), batch_size=1)
+                        x= next(g_x)
+                        img = x
                 imglist[i] = img
                 labellist[i] = label
             yield (imglist, labellist)
@@ -125,7 +133,8 @@ def model_training():
                                    data_format='channels_last',
                                    brightness_range=[0.5, 1.5])
 
-    train_df = pd.read_csv(newcsvpath)
+    modsdf = None
+    train_df = pd.read_csv(reducedcsvpath)
     train_df['path'] = train_df['image_id'].map(imageid_path_dict.get)
 
     labelnum = train_df.groupby('dx').size()
@@ -133,17 +142,23 @@ def model_training():
     encoder = LabelEncoder()  # Lo usaremos para las labels
     encoder.fit(train_df['dx'])
     labeldf = encoder.transform(train_df['dx'])
-    modsdf = train_df['mods']
-    modsdf = modsdf.as_matrix(columns=None)
+    try:
+        modsdf = train_df['mods']
+        modsdf = modsdf.as_matrix(columns=None)
+    except KeyError:
+        existsMods=False
     print_samples(encoder, labeldf)
     labeldf = to_categorical(labeldf)
     print(type(labeldf))
-    print(type(modsdf))
-    train_target, test_img_path, train_label, test_label, target_mods, test_mods = train_test_split(train_df['path'], labeldf, modsdf, test_size=0.2)
-    train_img_path, valid_img_path, train_label, valid_label, train_mods, valid_mods = train_test_split(train_target, train_label, target_mods, test_size=0.2)
+    if existsMods:
+        print(type(modsdf))
+        train_target, test_img_path, train_label, test_label, target_mods, test_mods = train_test_split(train_df['path'], labeldf, modsdf, test_size=0.2)
+        train_img_path, valid_img_path, train_label, valid_label, train_mods, valid_mods = train_test_split(train_target, train_label, target_mods, test_size=0.2)
+    else:
+        train_target, test_img_path, train_label, test_label = train_test_split(train_df['path'], labeldf, test_size=0.2)
+        train_img_path, valid_img_path, train_label, valid_label = train_test_split(train_target, train_label, test_size=0.2)
+
     validdata = valid_gen()
-    print("Mods len: "+str(len(train_mods)))
-    print("Labels len: "+str(len(train_label)))
 
     print("Creando modelo y compilandolo")
     model = model_inception_resnetV2()
@@ -254,10 +269,35 @@ def model_AlexNet():
     model.add(Activation('softmax'))
     return model
 
-def load_model_from_h5():
+
+def load_model_from_h5(model):
     print("Please wait, this proccess will take about a min, depending on your machine config")
-    model = load_model('model.h5')
+    if model is None:
+        print("Loading model.h5")
+        model = load_model('model.h5')
     return model
+
+def reduce_csv(path):
+    curr_df = pd.read_csv(path)
+    print(curr_df)
+    try:
+        print(curr_df['reduced'])
+        print("Este csv ya esta reducido")
+    except KeyError:
+        print("Vamos a proceder a la reduccion del csv")
+        i = 0
+        curr_df['reduced'] = 1
+        for index, row in curr_df.iterrows():
+            if index % 100 == 0:
+                print("Lineas procesadas: " + str(index))
+            if row['dx'] == 'nv':
+                i += 1
+                if i > 1100:
+                    curr_df = curr_df.drop(curr_df.index[curr_df.index.get_loc(row.name)])
+        print(curr_df)
+        print("Reduccion terminada")
+        curr_df.to_csv(reducedcsvpath)
+
 
 def augmentate_csv(path):
     curr_df = pd.read_csv(path)
@@ -302,13 +342,27 @@ def augmentate_csv(path):
                     curr_df = curr_df.append(new_row, ignore_index=True)
         print(curr_df)
         print("Ensanchamiento terminado")
-        curr_df.to_csv(newcsvpath)
+        curr_df.to_csv(reducedcsvpath)
 
 
-def predict_image(image):
-    try:
-        load_model_from_h5()
-        #hacemos el predict de la imagen, extraemos el label
-    except:
-        return None
+def predict_image(imagepath, mod=None):
+    #TODO try except y ver posibles errores
+        train_df = pd.read_csv(reducedcsvpath)
+        encoder = LabelEncoder()  # Lo usaremos para las labels
+        encoder.fit(train_df['dx'])
+        model = load_model_from_h5(mod)
+        img = read_img(imagepath)
+        img = np.expand_dims(img, axis=0)
+        result = model.predict(img, verbose=0)
+        result = np.round_(result)
+        print(result[0])
+        decoded = encoder.inverse_transform([argmax(result)])
+        print(decoded)
+        return lesion_type_dict[decoded[0]], model
+
+
+
+
+
+
 
