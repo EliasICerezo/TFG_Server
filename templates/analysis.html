@@ -2,37 +2,52 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='bulma-0.7.2/css/bulma.css') }}"/>
+    <title>Analysis</title>
     <style>
-        .box__dragndrop,
-        .box__uploading,
-        .box__success,
-        .box__error {
-            display: none;
-        }
         body {
             background-color: #2a9cda;
         }
     </style>
-    <title>Analysis</title>
+    <script>
+        var filename="file";
+        function actualizacampos() {
+            filename =  document.getElementById('file').value.substring(12);
+            document.getElementById('namefield').value = filename
+        }
+    </script>
 </head>
 <body>
 {% block navbar %}
     {% include "navBar.html" %}
 {% endblock navbar %}
 <div class="container">
-    <form class="box" method="post" action="{{ url_for("image_result") }}" enctype="multipart/form-data">
-        <div class="box__input">
-            <input class="box__file" type="file" name="files[]" id="file" data-multiple-caption="{count} files selected"
-                   multiple/>
-            <label for="file"><strong>Choose a file</strong><span
-                    class="box__dragndrop"> or drag it here</span>.</label>
-            <button class="box__button" type="submit">Upload</button>
-        </div>
-        <div class="box__uploading">Uploading&hellip;</div>
-        <div class="box__success">Done!</div>
-        <div class="box__error">Error! <span></span>.</div>
-    </form>
+    <div class="notification">
+        <form enctype="multipart/form-data" action="{{ url_for("analize_image") }}" method="POST">
+            <div class="field">
+                <div class="file is-centered is-boxed is-link has-name">
+                    <label class="file-label">
+                        <input class="file-input" type="file" name="image" id="file" oninput="actualizacampos()">
+                        <span class="file-cta" id="filename">
+            <span class="file-icon">
+              <img src="../static/images/upload.svg" alt="upstream cloud"/>
+            </span>
+            <span class="file-label">
+              Selecciona fichero
+            </span>
+          </span>
+                    <input class="input" type="text" value="Nombre de fichero" id="namefield">
+                    </label>
+                </div>
+            </div>
+            <input class="button is-primary is-fullwidth" type="submit" value="Enviar"/>
+        </form>
+    </div>
 </div>
 
+
+
+{% block footer %}
+    {% include "footer.html" %}
+{% endblock %}
 </body>
 </html>

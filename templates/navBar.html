@@ -8,7 +8,7 @@
 <body>
     <nav class="navbar" role="navigation" aria-label="main navigation">
         <div class="navbar-brand">
-            <a class="navbar-item" href="{{ url_for("index") }}">
+            <a class="navbar-item" href="{{ url_for("start") }}">
                 <img src="../static/images/test.PNG" >
             </a>
             <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
@@ -20,13 +20,18 @@
 
         <div id="navbarBasicExample" class="navbar-menu">
             <div class="navbar-start">
-              <a class="navbar-item">
-                Predict
+              <a class="navbar-item" href="{{ url_for("index") }}">
+                Index
+              </a>
+
+              <a class="navbar-item" href="{{ url_for("analize_render") }}">
+                Análisis
               </a>
 
               <a class="navbar-item" href="{{ url_for("disclaimer_render") }}">
                 Advertencias
               </a>
+
             </div>
         </div>
     </nav>

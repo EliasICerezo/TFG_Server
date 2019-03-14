@@ -46,7 +46,7 @@ lesion_type_dict = {
     'df': 'Dermatofibroma'
 }
 
-
+model = None
 
 
 def model_training():
@@ -274,7 +274,7 @@ def load_model_from_h5(model):
     print("Please wait, this proccess will take about a min, depending on your machine config")
     if model is None:
         print("Loading model.h5")
-        model = load_model('model.h5')
+        model = load_model('D:\OneDrive\TFG\TFG_Python\core\model.h5')
     return model
 
 def reduce_csv(path):

@@ -1,0 +1,40 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='bulma-0.7.2/css/bulma.css') }}"/>
+    <style>
+        body {
+            background-color: #2a9cda;
+        }
+    </style>
+    <title>Skin Cancer detector</title>
+</head>
+<body>
+
+<div class="container is-centered">
+    <div class="notification">
+        <div class="card">
+            <div class="card-image">
+                <figure class="image">
+                    <!-- TODO Insertar logo correspondiente aqui -->
+                </figure>
+            </div>
+            <div class="card-content">
+                <div class="subtitle">
+                    <b>Advertencias</b>
+                </div>
+                <div class="content has-text-danger">
+                    <p>Use esta aplicación bajo su propia responsabilidad. <br/> No se automedique en base a los resultados obtenidos.</p>
+                </div>
+                <a class="button is-large is-info is-fullwidth" href="{{ url_for("index") }}">Acceder</a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% block footer %}
+    {% include "footer.html" %}
+{% endblock %}
+</body>
+</html>
