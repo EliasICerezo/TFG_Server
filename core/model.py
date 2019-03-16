@@ -122,19 +122,19 @@ def model_training():
 
     #End of local funcion definitions
 
-    image_gen = ImageDataGenerator(rotation_range=15,
-                                   width_shift_range=0.1,
-                                   height_shift_range=0.1,
+    image_gen = ImageDataGenerator(rotation_range=90,
+                                   width_shift_range=0.25,
+                                   height_shift_range=0.25,
                                    shear_range=0.01,
-                                   zoom_range=[0.9, 1.25],
+                                   zoom_range=[0.9, 1.50],
                                    horizontal_flip=True,
                                    vertical_flip=True,
                                    fill_mode='reflect',
                                    data_format='channels_last',
-                                   brightness_range=[0.5, 1.5])
+                                   brightness_range=[0.5, 1.75])
 
     modsdf = None
-    train_df = pd.read_csv(reducedcsvpath)
+    train_df = pd.read_csv(augmentedcsvpath)
     train_df['path'] = train_df['image_id'].map(imageid_path_dict.get)
 
     labelnum = train_df.groupby('dx').size()
@@ -170,14 +170,21 @@ def model_training():
     ]
     print('Se comienza el entrenamiento del modelo')
     print(model.metrics_names)
-    model.fit_generator(train_gen_v2(), epochs=80, steps_per_epoch=80, verbose=2, validation_data=validdata, callbacks= callbacks)
-    print("Entrenamiento completado, se procede al test final")
+    try:
+        model.fit_generator(train_gen_v2(), epochs=80, steps_per_epoch=100, verbose=2, validation_data=validdata, callbacks= callbacks)
+        print("Entrenamiento completado, se procede al test final")
+        test_model(model, test_gen)
+    except:
+        test_gen()
+    finish = time.time()
+    print("El entrenamiento ha llevado : "+str(finish-start))
+
+
+def test_model(model, test_gen):
     test_x, test_y = test_gen()
     result = model.evaluate(test_x, test_y, verbose=1)
     print(model.metrics_names)
     print(result)
-    finish = time.time()
-    print("El entrenamiento ha llevado : "+str(finish-start))
 
 
 def print_samples(encoder, labeldf):

@@ -26,6 +26,23 @@
             <p class="is-size-6">Esta aplicación ha sido diseñada como parte del trabajo de fin de grado del alumno del grado en Ingeniería del Software en la Universidad de Málaga Elias Ibn Ziaten Cerezo. El fin de la misma es ser capaz de discernir entre piel sana y 7 lesiones cutáneas diferentes. Se excluye del fin de esta aplicación el invitar a los usuarios a automedicarse, o sustituir un experto dermatólogo por el resultado obtenido en la aplicación. En la implementación se ha utilizado un sistema inteligente compuesto de varios componentes inteligentes, susceptibles a fallo, y muy complejos.  </p>
         </div>
     </div>
+    <br/>
+    <div class="container">
+        <div class="notification">
+            <div class="columns">
+                <div class="column">
+                    <a href="{{ url_for("analize_render") }}" class="button is-link is-fullwidth">Analizar Imagen</a>
+                </div>
+                <div class="column">
+                    <a href="{{ url_for("index") }}" class="button is-primary is-fullwidth">Volver al Index</a>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+
+
 {% block footer %}
     {% include "footer.html" %}
 {% endblock %}

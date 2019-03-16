@@ -1,0 +1,78 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='bulma-0.7.2/css/bulma.css') }}"/>
+    <style>
+        body {
+            background-color: #2a9cda;
+        }
+    </style>
+</head>
+<body>
+{% block navbar %}
+    {% include 'navBar.html' %}
+{% endblock %}
+<div class="container">
+    <div class="notification">
+        <div class="columns">
+            <div class="column">
+
+                <div class="card">
+                    <div class="card-image">
+                        <figure class="image ">
+                            <img src="../static/images_received/{{ filename }}" alt="Imagen original">
+                        </figure>
+                    </div>
+                    <div class="card-content">
+                        <div class="subtitle">
+                            Imagen Original
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="column">
+
+                <div class="card">
+                    <div class="card-image">
+                        <figure class="image ">
+                            <img src="../static/images_received/{{ newfilename }}" alt="Imagen analizada">
+                        </figure>
+                    </div>
+                    <div class="card-content">
+                        <div class="subtitle">
+                            Imagen analizada
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="column">
+
+                <div class="card">
+                    <header class="card-header">
+                        <p class="card-header-title">
+                            Resultado:
+                        </p>
+                    </header>
+                    <div class="card-content">
+                        <div class="content">
+                            El sistema inteligente ha identificado la imagen enviada como: <b> {{ result }} </b>
+                        </div>
+                    </div>
+                    <footer class="card-footer">
+                        <a href="{{ url_for("analize_render") }}" class="button is-link is-fullwidth">Volver a analizar</a>
+                        <a href="{{ url_for("index") }}" class="button is-primary is-fullwidth">Volver al Index</a>
+                    </footer>
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+</div>
+{% block footer %}
+    {% include "footer.html" %}
+{% endblock %}
+</body>
+</html>
