@@ -1,4 +1,3 @@
-import csv
 import random
 from keras import Model
 from keras.layers import *
@@ -13,18 +12,17 @@ from keras.applications.mobilenet import MobileNet
 import os
 from glob import glob
 from keras.utils import to_categorical
-from keras.models import load_model
-from keras.models import Sequential
 from keras.preprocessing.image import ImageDataGenerator
 from numpy import argmax
 import time
-from keras.optimizers import Adamax
+from keras.optimizers import Adamax, Adam, RMSprop
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
-from sklearn.utils.multiclass import unique_labels
 from keras.applications.vgg16 import VGG16
-from keras.utils import plot_model
-
+from keras.engine.saving import load_model
+from matplotlib import pyplot as plt
+from sklearn.metrics import confusion_matrix
+import webbrowser
+from keras.losses import mean_squared_error
 
 reducedcsvpath= 'D:\OneDrive\TFG\TFG_Python\HAMReduced.csv'
 augmentedcsvpath = 'D:\OneDrive\TFG\TFG_Python\HAMAugmented.csv'
@@ -117,10 +115,6 @@ def model_training(onlytest = False):
                         g_x = image_gen.flow(np.expand_dims(img,axis=0), batch_size=1)
                         x= next(g_x)
                         img = x
-                # print("------")
-                # print(label)
-                # print(imgpath)
-                # print("------")
                 imglist[i] = img
                 labellist[i] = label
             # print(imglist,labellist)
@@ -193,23 +187,20 @@ def model_training(onlytest = False):
     if not onlytest:
         validdata = valid_gen()
         print("Creando modelo y compilandolo")
-        model = model_inception_resnetV2()
-        model.compile(metrics=['accuracy'], loss='categorical_crossentropy', optimizer=Adamax())
+        model = model_inception_V3()
+        model.compile(metrics=['accuracy'], loss='mean_squared_error', optimizer=RMSprop())
         callbacks = [
-            ModelCheckpoint('equilibrado.h5',monitor='val_loss', save_best_only=True, verbose=1),
+            # ModelCheckpoint('msqe.h5',monitor='val_loss', save_best_only=True, verbose=1),
             ReduceLROnPlateau(monitor='val_loss', patience=5, verbose=1),
             EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
         ]
         print('Se comienza el entrenamiento del modelo')
         print(model.metrics_names)
-        #try:
         model.fit_generator(train_gen_v2(), epochs=40, steps_per_epoch=30, verbose=2, validation_data=validdata, callbacks= callbacks)
         print("Entrenamiento completado, se procede al test final")
         test_model(model, test_gen, labels)
-
-         #   test_gen()
     else:
-        model = load_model_from_h5(None)
+        model = model_load_from_h5(None)
         test_model(model, test_gen, labels)
 
     finish = time.time()
@@ -229,7 +220,8 @@ def test_model(model, test_gen, labels):
     predictions = encoder.transform(predictions)
     test_y = [argmax(a) for a in test_y]
     test_y = encoder.transform(test_y)
-    plot_confusion_matrix(test_y,predictions,labels)
+    plot_confusion_matrix(test_y, predictions, labels)
+    webbrowser.open("https://www.youtube.com/watch?v=t6wjCcWC2aE",new=2)
 
 
 
@@ -238,10 +230,6 @@ def read_img(imgpath):
     img = cv2.imread(imgpath)
     if img is None:
         print(imgpath)
-    # print("----------")
-    # print(imgpath)
-    # print(img)
-    # print("----------")
     img = cv2.resize(img, dsize=(WIDTH, HEIGHT))
     return img
 
@@ -251,20 +239,20 @@ def read_img(imgpath):
 def model_inception_resnetV2():
     model = InceptionResNetV2(include_top = False, input_shape = (HEIGHT, WIDTH, 3), weights='imagenet')
     addition = GlobalAveragePooling2D()(model.output)
-    addition = Dropout(0.6)(addition)
-    addition = Dense(128,activation='relu')(addition)
+    addition = Dropout(0.7)(addition)
+    addition = Dense(256,activation='relu')(addition)
     addition = Dense(3, activation='softmax')(addition)
     model = Model(model.inputs, addition)
     return model
 
-def model_inception_V3(LABELNUM):
-    model = InceptionV3(include_top=False, input_shape = (HEIGHT, WIDTH, 3), weights=None, pooling = 'avg')
-    addition = Dropout(0.5)(model.output)
-    addition = Dense(256, activation='relu')(addition)
-    addition = Dense(LABELNUM, activation='softmax')(addition)
+def model_inception_V3():
+    model = InceptionV3(include_top=False, input_shape=(HEIGHT, WIDTH, 3), weights='imagenet')
+    addition = GlobalAveragePooling2D()(model.output)
+    addition = Dropout(0.6)(addition)
+    addition = Dense(128, activation='relu')(addition)
+    addition = Dense(3, activation='softmax')(addition)
     model = Model(model.inputs, addition)
     return model
-
 def model_VGG16():
     model = VGG16(include_top=False, weights = None, input_shape=(HEIGHT, WIDTH, 3))
     addition = GlobalAveragePooling2D()(model.output)
@@ -296,68 +284,15 @@ def model_mobilenet():
     return model
 
 
-def model_AlexNet():
-    # Instantiate an empty model
-    model = Sequential()
 
-    # 1st Convolutional Layer
-    model.add(Conv2D(filters=96, input_shape=(224, 224, 3), kernel_size=(11, 11), strides=(4, 4), padding='valid'))
-    model.add(Activation('relu'))
-    # Max Pooling
-    model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid'))
-
-    # 2nd Convolutional Layer
-    model.add(Conv2D(filters=256, kernel_size=(11, 11), strides=(1, 1), padding='valid'))
-    model.add(Activation('relu'))
-    # Max Pooling
-    model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid'))
-
-    # 3rd Convolutional Layer
-    model.add(Conv2D(filters=384, kernel_size=(3, 3), strides=(1, 1), padding='valid'))
-    model.add(Activation('relu'))
-
-    # 4th Convolutional Layer
-    model.add(Conv2D(filters=384, kernel_size=(3, 3), strides=(1, 1), padding='valid'))
-    model.add(Activation('relu'))
-
-    # 5th Convolutional Layer
-    model.add(Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), padding='valid'))
-    model.add(Activation('relu'))
-    # Max Pooling
-    model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid'))
-
-    # Passing it to a Fully Connected layer
-    model.add(Flatten())
-    # 1st Fully Connected Layer
-    model.add(Dense(4096, input_shape=(224 * 224 * 3,)))
-    model.add(Activation('relu'))
-    # Add Dropout to prevent overfitting
-    model.add(Dropout(0.4))
-
-    # 2nd Fully Connected Layer
-    model.add(Dense(4096))
-    model.add(Activation('relu'))
-    # Add Dropout
-    model.add(Dropout(0.4))
-
-    # 3rd Fully Connected Layer
-    model.add(Dense(1000))
-    model.add(Activation('relu'))
-    # Add Dropout
-    model.add(Dropout(0.4))
-
-    # Output Layer
-    model.add(Dense(17))
-    model.add(Activation('softmax'))
-    return model
-
-
-def load_model_from_h5(model):
+def model_load_from_h5(model):
     print("Please wait, this proccess will take about a min, depending on your machine config")
     if model is None:
         print("Loading model.h5")
         model = load_model('D:\OneDrive\TFG\TFG_Python\core\equilibrado.h5')
     return model
+
+
 
 def reduce_csv(path):
     curr_df = pd.read_csv(path)
@@ -432,7 +367,7 @@ def predict_image(imagepath, mod=None):
         train_df = pd.read_csv(bincsvpath)
         encoder = LabelEncoder()  # Lo usaremos para las labels
         encoder.fit(train_df['tipo'])
-        model = load_model_from_h5(mod)
+        model = model_load_from_h5(mod)
         img = read_img(imagepath)
         img = np.expand_dims(img, axis=0)
         result = model.predict(img, verbose=0)
@@ -497,5 +432,5 @@ def plot_confusion_matrix(y_true, y_pred, classes,
     plt.show()
     return ax
 
-
-
+if __name__ == '__main__':
+    model_training()

@@ -1,7 +1,8 @@
 from flask import Flask, url_for, render_template, redirect,request, flash
 from werkzeug.utils import secure_filename
 import os
-from core.model import predict_image, read_img
+from core.model import read_img
+from model_utils.utils import predict_image
 import core.model as core
 import cv2
 import json
