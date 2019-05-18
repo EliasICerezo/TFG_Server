@@ -5,7 +5,7 @@ from keras.layers import Input, Dense, Convolution2D, MaxPooling2D, AveragePooli
 from keras.models import Model
 from keras.regularizers import l2
 from keras.optimizers import SGD
-from model_utils.googlenet_custom_layers import PoolHelper, LRN
+from model_structures.googlenet_custom_layers import PoolHelper, LRN
 
 
 def create_googlenet(weights_path=None):

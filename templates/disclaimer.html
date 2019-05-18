@@ -16,14 +16,20 @@
     <div class="container">
         <div class="notification">
             <b class="is-size-5">Disclaimer:</b>
-            <p class="is-size-6">This software runs a complex artificial intelligence that can be susceptible to failure. This software has been developed as part as an End Of Degree Work. The objective of this software is to be capable of distinguish healthy skin and 7 different skin injuries. In no case it has been implemented to diagnose skin lesions or to self-medicate based on the results.</p>
+            <p class="is-size-6">Do not self-medicate based on the results. This app does not diagnose the disease, it is an assistant. Go visit a professional to obtain true information.
+In case you obtain a non-favorable result, don’t panic. Go visit a professional to verify the result because this app has an error margin. The images sent must be framed, with good lighting, and the lesion that you want to analyze should be centered. If one or more of these conditions are not good enough you can obtain a wrong result.
+This application does not save any of the images sent. Also no personal data are required, so the use of this application is completely anonymous
+</p>
         </div>
     </div>
     <br/>
     <div class="container">
         <div class="notification">
             <b class="is-size-5">Advertencia:</b>
-            <p class="is-size-6">Esta aplicación ha sido diseñada como parte del trabajo de fin de grado del alumno del grado en Ingeniería del Software en la Universidad de Málaga Elias Ibn Ziaten Cerezo. El fin de la misma es ser capaz de discernir entre piel sana y 7 lesiones cutáneas diferentes. Se excluye del fin de esta aplicación el invitar a los usuarios a automedicarse, o sustituir un experto dermatólogo por el resultado obtenido en la aplicación. En la implementación se ha utilizado un sistema inteligente compuesto de varios componentes inteligentes, susceptibles a fallo, y muy complejos.  </p>
+            <p class="is-size-6">No se automedique en base a los resultados obtenidos. Esta aplicación no realiza un diagnóstico, es tan solo un asistente. Acuda a un profesional para obtener información veraz.
+En caso de que obtenga un resultado no favorable no se alarme, acuda a un profesional para verificar lo obtenido porque esta aplicación tiene un margen de error. Las imágenes que se envíen o se tomen deben estar encuadradas y con una buena iluminación y la lesión a analizar debe estar más o menos centrada pues si este no es el caso puede obtenerse un veredicto erróneo o fallido.
+Esta aplicación no guarda ninguna de las imágenes enviadas ni tampoco se le requiere ningún tipo de dato personal identificatorio, por tanto su uso es completamente anónimo.
+</p>
         </div>
     </div>
     <br/>
@@ -31,10 +37,10 @@
         <div class="notification">
             <div class="columns">
                 <div class="column">
-                    <a href="{{ url_for("analize_render") }}" class="button is-link is-fullwidth">Analizar Imagen</a>
+                    <a href="{{ url_for("analize_render") }}" class="button is-link is-fullwidth">Acepto. Analizar Imagen</a>
                 </div>
                 <div class="column">
-                    <a href="{{ url_for("index") }}" class="button is-primary is-fullwidth">Volver al Index</a>
+                    <a href="{{ url_for("start") }}" class="button is-danger is-fullwidth">Rechazo. Salir</a>
                 </div>
             </div>
 

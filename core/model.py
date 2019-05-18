@@ -1,28 +1,20 @@
 import random
-from keras import Model
+
 from keras.layers import *
-from keras.callbacks import ModelCheckpoint,ReduceLROnPlateau,EarlyStopping
+from keras.callbacks import ReduceLROnPlateau,EarlyStopping
 from sklearn.model_selection import train_test_split
-import cv2
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
-from keras.applications.inception_resnet_v2 import InceptionResNetV2
-from keras.applications.inception_v3 import InceptionV3
-from keras.applications.mobilenet import MobileNet
 import os
 from glob import glob
 from keras.utils import to_categorical
 from keras.preprocessing.image import ImageDataGenerator
 from numpy import argmax
 import time
-from keras.optimizers import Adamax, Adam, RMSprop
-import matplotlib.pyplot as plt
-from keras.applications.vgg16 import VGG16
-from keras.engine.saving import load_model
+from keras.optimizers import RMSprop
 from matplotlib import pyplot as plt
-from sklearn.metrics import confusion_matrix
 import webbrowser
-from keras.losses import mean_squared_error
+from core.modelstructures import model_inception_V3, model_inception_resnetV2, model_VGG16, model_mobilenet
 
 reducedcsvpath= 'D:\OneDrive\TFG\TFG_Python\HAMReduced.csv'
 augmentedcsvpath = 'D:\OneDrive\TFG\TFG_Python\HAMAugmented.csv'
@@ -32,16 +24,14 @@ impath = 'D:\OneDrive\TFG\TFG_Python\Images'
 h5path = 'D:\OneDrive\TFG\TFG_Python\core\model.h5'
 # Constante que da las dimensiones para las distintas imagenes
 HEIGHT = WIDTH = 224
-# Aqui se ponen los ratios por cada uno de los tipos de imagenes, para ver cuantas modificaciones hay que hacer por cada una de ellas.
-AKIEC = 19
-BCC = 11
-BKL = 5
-DF = 55
-MEL = 4
-VASC = 44
+
+
 
 imageid_path_dict = {os.path.splitext(os.path.basename(x))[0]: x
                      for x in glob(os.path.join(impath, '*.jpg'))}
+
+
+from core.modelfunctions import model_load_from_h5, plot_confusion_matrix, read_image
 
 lesion_type_dict = {
     'nv': 'Melanocytic nevi',
@@ -54,17 +44,24 @@ lesion_type_dict = {
 }
 
 model = None
-batch_size=32
+
+"""
+    Esta función realiza el entrenamiento del modelo
+    Recibe como argumentos:
+    onlytest, que en caso de que sea True hará las pruebas del modelo que esté referenciado en load_model_from_h5
+"""
+
 
 def model_training(onlytest = False):
     start = time.time()
-    # Local funcions definitions
+    #Definicion de los generadores locales
     def test_gen():
         imglist = np.zeros((len(test_img_path), HEIGHT,WIDTH,3))
         labellist = np.zeros((len(test_img_path), len(labelnum)))
         for i, imgpath in enumerate(test_img_path):
-            img = read_img(imgpath)
+            img = read_image(imgpath)
             label = test_label[i]
+            # En caso de que se pase un csv con data augmentation se realizan las modificaciones pertinentes
             if existsMods:
                 mod = test_mods[i]
                 if mod.item != 0:
@@ -79,15 +76,18 @@ def model_training(onlytest = False):
             labellist[i] = label
         return (imglist, labellist)
 
+    #Generador para la los datos de validación al final de cada epoca
     def valid_gen():
+        # Se crea un tensor, se llena de imágenes y se devuelven
         imglist = np.zeros((len(valid_img_path), HEIGHT, WIDTH, 3))
         labellist = np.zeros((len(valid_img_path), len(labelnum)))
         for i, imgpath in enumerate(valid_img_path):
             try:
                 if i % 100 ==0:
                     print("Valid gen: Img leidas= "+str(i))
-                img = read_img(imgpath)
+                img = read_image(imgpath)
                 label = valid_label[i]
+                # En caso de que se pase un csv con data augmentation se realizan las modificaciones pertinentes
                 if existsMods:
                     mod = valid_mods[i]
                     if mod.item != 0:
@@ -100,15 +100,19 @@ def model_training(onlytest = False):
                 pass
         return (imglist, labellist)
 
+    #Generador de entrenamiento
     def train_gen_v2(batch_size=32):
         while(True):
+            # Se crea un tensor del batch size indicado
             imglist = np.zeros((batch_size, HEIGHT, WIDTH, 3))
             labellist = np.zeros((batch_size, len(labelnum)))
+            # Se rellena de imágenes de manera aleatoria
             for i in range(batch_size):
                 rndid = random.randint(0, len(train_img_path) - 1)
                 imgpath = train_img_path[train_img_path.index[rndid]]
-                img = read_img(imgpath)
+                img = read_image(imgpath)
                 label = train_label[rndid]
+                # En caso de que se pase un csv con data augmentation se realiza el data augmentation correspondiente
                 if existsMods:
                     mod = train_mods[rndid]
                     if mod.item != 0:
@@ -117,11 +121,11 @@ def model_training(onlytest = False):
                         img = x
                 imglist[i] = img
                 labellist[i] = label
-            # print(imglist,labellist)
             yield (imglist, labellist)
 
-    #End of local funcion definitions
+    #Fin de las definiciones locales
 
+    # Generador de imágenes para los csv con data augmentation
     image_gen = ImageDataGenerator(rotation_range=90,
                                    width_shift_range=0.25,
                                    height_shift_range=0.25,
@@ -133,9 +137,10 @@ def model_training(onlytest = False):
                                    data_format='channels_last',
                                    brightness_range=[0.5, 1.75])
 
-    existsMods = True
-    isBinary = False
-    modsdf = None
+    #Variables inherentes a la ejecucion que se modificaran a medida que se vaya comprobando la configuracion
+    existsMods = True # Es un dataset con data aumentation
+    isBinary = False # La clasificacion es trivaluada
+    modsdf = None # Datos de las modificaciones para data augmentation
     train_df = pd.read_csv(bincsvpath)
     encoder = LabelEncoder()  # Lo usaremos para las labels
 
@@ -144,11 +149,12 @@ def model_training(onlytest = False):
     mylist = list(dict.fromkeys(mylist))
     labels = mylist
 
-
+    #Comprobamos si en el csv que nos pasan existe la columna tipo y por tanto la clasificación es trivaluada
     if "tipo" in train_df.columns:
         isBinary=True
-
+    #Se informa de la clasificacion que se va a hacar
     print("ISBINARY: "+str(isBinary))
+    # Se realiza la configuracion en base a si al clasificacion es trivaluada o no
     if not isBinary:
         train_df['path'] = train_df['image_id'].map(imageid_path_dict.get)
         labelnum = train_df.groupby('dx').size()
@@ -160,16 +166,17 @@ def model_training(onlytest = False):
         labelnum = train_df.groupby("tipo").size()
         print(labelnum)
         encoder.fit(mylist)
-        #encoder.fit(train_df["tipo"].astype(str))
         labeldf = encoder.transform(train_df["tipo"])
         LABELNUM=3
 
+    #Comprobamos si el csv esta configurado para data augmentation
     try:
         modsdf = train_df['mods']
         modsdf = modsdf.as_matrix(columns=None)
     except KeyError:
         existsMods = False
     labeldf = to_categorical(labeldf)
+    # Hacemos la particion del dataset
     if existsMods:
         print(type(modsdf))
         train_target, test_img_path, train_label, test_label, target_mods, test_mods = train_test_split(
@@ -186,9 +193,11 @@ def model_training(onlytest = False):
 
     if not onlytest:
         validdata = valid_gen()
+        #Seleccionamos y compilamos el modelo el modelo
         print("Creando modelo y compilandolo")
         model = model_inception_V3()
         model.compile(metrics=['accuracy'], loss='mean_squared_error', optimizer=RMSprop())
+        #Añadimos los callbacks
         callbacks = [
             # ModelCheckpoint('msqe.h5',monitor='val_loss', save_best_only=True, verbose=1),
             ReduceLROnPlateau(monitor='val_loss', patience=5, verbose=1),
@@ -196,8 +205,10 @@ def model_training(onlytest = False):
         ]
         print('Se comienza el entrenamiento del modelo')
         print(model.metrics_names)
-        model.fit_generator(train_gen_v2(), epochs=40, steps_per_epoch=30, verbose=2, validation_data=validdata, callbacks= callbacks)
+        #Entrenamos el modelo
+        model.fit_generator(train_gen_v2(), epochs=1, steps_per_epoch=1, verbose=2, validation_data=validdata, callbacks= callbacks)
         print("Entrenamiento completado, se procede al test final")
+        #Probamos el modelo
         test_model(model, test_gen, labels)
     else:
         model = model_load_from_h5(None)
@@ -207,6 +218,12 @@ def model_training(onlytest = False):
     print("El entrenamiento ha llevado : "+str(finish-start))
 
 
+""" 
+    En esta funcion se prueba el modelo, recibe como argumentos:
+    El modelo a probar
+    El generador de tests
+    Los valores reales de clasificación de los datos que se van a probar
+"""
 def test_model(model, test_gen, labels):
     test_x, test_y = test_gen()
     result = model.evaluate(test_x, test_y, verbose=1)
@@ -224,213 +241,7 @@ def test_model(model, test_gen, labels):
     webbrowser.open("https://www.youtube.com/watch?v=t6wjCcWC2aE",new=2)
 
 
-
-
-def read_img(imgpath):
-    img = cv2.imread(imgpath)
-    if img is None:
-        print(imgpath)
-    img = cv2.resize(img, dsize=(WIDTH, HEIGHT))
-    return img
-
-
-
-
-def model_inception_resnetV2():
-    model = InceptionResNetV2(include_top = False, input_shape = (HEIGHT, WIDTH, 3), weights='imagenet')
-    addition = GlobalAveragePooling2D()(model.output)
-    addition = Dropout(0.7)(addition)
-    addition = Dense(256,activation='relu')(addition)
-    addition = Dense(3, activation='softmax')(addition)
-    model = Model(model.inputs, addition)
-    return model
-
-def model_inception_V3():
-    model = InceptionV3(include_top=False, input_shape=(HEIGHT, WIDTH, 3), weights='imagenet')
-    addition = GlobalAveragePooling2D()(model.output)
-    addition = Dropout(0.6)(addition)
-    addition = Dense(128, activation='relu')(addition)
-    addition = Dense(3, activation='softmax')(addition)
-    model = Model(model.inputs, addition)
-    return model
-def model_VGG16():
-    model = VGG16(include_top=False, weights = None, input_shape=(HEIGHT, WIDTH, 3))
-    addition = GlobalAveragePooling2D()(model.output)
-    addition = Dropout(0.5)(addition)
-    addition = Dense(256, activation='relu')(addition)
-    addition = Dense(3, activation='softmax')(addition)
-    model = Model(model.inputs, addition)
-    return model
-
-def model_mobilenet():
-    # Create a MobileNet model
-    mobile = MobileNet()
-
-    # Modify the model
-    # Choose the 6th layer from the last
-    x = mobile.layers[-6].output
-
-    # Add a dropout and dense layer for predictions
-    x = Dropout(0.25)(x)
-    predictions = Dense(7, activation='softmax')(x)
-
-    # Create a new model with the new outputs
-    model = Model(inputs=mobile.input, outputs=predictions)
-
-    # Prevent everything except the last 23 layers from being trained
-    for layer in model.layers[:-23]:
-        layer.trainable = False
-
-    return model
-
-
-
-def model_load_from_h5(model):
-    print("Please wait, this proccess will take about a min, depending on your machine config")
-    if model is None:
-        print("Loading model.h5")
-        model = load_model('D:\OneDrive\TFG\TFG_Python\core\equilibrado.h5')
-    return model
-
-
-
-def reduce_csv(path):
-    curr_df = pd.read_csv(path)
-    print(curr_df)
-    try:
-        print(curr_df['reduced'])
-        print("Este csv ya esta reducido")
-    except KeyError:
-        print("Vamos a proceder a la reduccion del csv")
-        i = 0
-        curr_df['reduced'] = 1
-        for index, row in curr_df.iterrows():
-            if index % 100 == 0:
-                print("Lineas procesadas: " + str(index))
-            if row['dx'] == 'nv':
-                i += 1
-                if i > 1100:
-                    curr_df = curr_df.drop(curr_df.index[curr_df.index.get_loc(row.name)])
-        print(curr_df)
-        print("Reduccion terminada")
-        curr_df.to_csv(reducedcsvpath)
-
-
-def augmentate_csv(path):
-    curr_df = pd.read_csv(path)
-    try:
-        print(curr_df['mods'])
-        print("El csv esta ensanchado")
-    except KeyError:
-        print("Se procede al ensanchamiento del csv")
-        curr_df['mods'] = 0
-        for index, row in curr_df.iterrows():
-            if index %100 ==0:
-                print("Lineas procesadas: "+str(index))
-            if row['dx'] == 'akiec' and row['mods']==0:
-                for i in range(1, (AKIEC+1) ):
-                    new_row = row
-                    new_row['mods'] = i
-                    curr_df = curr_df.append(new_row, ignore_index=True)
-            elif row['dx'] == 'bcc' and row['mods']==0:
-                for i in range(1, (BCC + 1)):
-                    new_row = row
-                    new_row['mods'] = i
-                    curr_df = curr_df.append(new_row, ignore_index=True)
-            elif row['dx'] == 'bkl' and row['mods']==0:
-                for i in range(1, (BKL + 1)):
-                    new_row = row
-                    new_row['mods'] = i
-                    curr_df = curr_df.append(new_row, ignore_index=True)
-            elif row['dx'] == 'df' and row['mods']==0:
-                for i in range(1, (DF + 1)):
-                    new_row = row
-                    new_row['mods'] = i
-                    curr_df = curr_df.append(new_row, ignore_index=True)
-            elif row['dx'] == 'mel' and row['mods']==0:
-                for i in range(1, (MEL + 1)):
-                    new_row = row
-                    new_row['mods'] = i
-                    curr_df = curr_df.append(new_row, ignore_index=True)
-            elif row['dx'] == 'vasc' and row['mods']==0:
-                for i in range(1, (VASC + 1)):
-                    new_row = row
-                    new_row['mods'] = i
-                    curr_df = curr_df.append(new_row, ignore_index=True)
-        print(curr_df)
-        print("Ensanchamiento terminado")
-        curr_df.to_csv(reducedcsvpath)
-
-
-def predict_image(imagepath, mod=None):
-    #TODO try except y ver posibles errores
-        train_df = pd.read_csv(bincsvpath)
-        encoder = LabelEncoder()  # Lo usaremos para las labels
-        encoder.fit(train_df['tipo'])
-        model = model_load_from_h5(mod)
-        img = read_img(imagepath)
-        img = np.expand_dims(img, axis=0)
-        result = model.predict(img, verbose=0)
-        result = np.round_(result)
-        print(result[0])
-        decoded = encoder.inverse_transform([argmax(result)])
-        print(decoded)
-        return decoded, model
-
-
-def plot_confusion_matrix(y_true, y_pred, classes,
-                          normalize=True,
-                          title=None,
-                          cmap=plt.cm.Blues):
-    """
-    This function prints and plots the confusion matrix.
-    Normalization can be applied by setting `normalize=True`.
-    """
-    print(classes)
-    if not title:
-        if normalize:
-            title = 'Normalized confusion matrix'
-        else:
-            title = 'Confusion matrix, without normalization'
-
-    # Compute confusion matrix
-    cm = confusion_matrix(y_true, y_pred)
-    # Only use the labels that appear in the data
-    if normalize:
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print("Normalized confusion matrix")
-    else:
-        print('Confusion matrix, without normalization')
-
-    print(cm)
-
-    fig, ax = plt.subplots()
-    im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
-    ax.figure.colorbar(im, ax=ax)
-    # We want to show all ticks...
-    ax.set(xticks=np.arange(cm.shape[1]),
-           yticks=np.arange(cm.shape[0]),
-           # ... and label them with the respective list entries
-           xticklabels=classes, yticklabels=classes,
-           title=title,
-           ylabel='True label',
-           xlabel='Predicted label')
-
-    # Rotate the tick labels and set their alignment.
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
-             rotation_mode="anchor")
-
-    # Loop over data dimensions and create text annotations.
-    fmt = '.2f' if normalize else 'd'
-    thresh = cm.max() / 2.
-    for i in range(cm.shape[0]):
-        for j in range(cm.shape[1]):
-            ax.text(j, i, format(cm[i, j], fmt),
-                    ha="center", va="center",
-                    color="white" if cm[i, j] > thresh else "black")
-    fig.tight_layout()
-    plt.show()
-    return ax
-
 if __name__ == '__main__':
     model_training()
+
+
