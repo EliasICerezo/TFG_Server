@@ -6,6 +6,7 @@ from numpy import argmax
 from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
+import os
 
 reducedcsvpath= 'D:\OneDrive\TFG\TFG_Python\HAMReduced.csv'
 bincsvpath = "D:\OneDrive\TFG\TFG_Python\dfrecortado_corregido.csv"
@@ -21,9 +22,14 @@ VASC = 44
 # Carga un modelo desde una ruta concreta. En caso de que reciba un modelo devuelve el mismo
 def model_load_from_h5(model):
     print("Please wait, this proccess will take about a min, depending on your machine config")
-    if model is None:
-        print("Loading model.h5")
-        model = load_model('D:\OneDrive\TFG\TFG_Python\models\inceptionresnetv2\model06dropout.h5')
+    try:
+        if model is None:
+            print("Loading model.h5")
+            models = os.listdir()
+            models = [e for e in models if e.endswith('.h5')]
+            model = load_model(models[0])
+    except:
+        raise Exception("No model available\nTo get a model file visit https://drive.google.com/drive/folders/1j-6pOOHK_uMTNc7Kk4QP6g9Rf1jnf4st?usp=sharing\nPlace the model you download in the root folder of the project.")
     return model
 
 # Funcion que opera un csv y realiza el submuestreo

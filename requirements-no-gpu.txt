@@ -49,7 +49,7 @@ scipy
 setuptools
 six
 tensorboard
-tensorflow-gpu
+tensorflow
 termcolor
 toolz
 tornado
